@@ -4,7 +4,7 @@ const app = express();
 const PORT = 5000;
 const db = require('./database')
 const fetch = require("node-fetch");
-const { google } = require("googleapis");
+const axios = require('axios').default;
 
 // body parser
 const bodyParser = require("body-parser");
@@ -31,52 +31,31 @@ app.use(require('./routes/outpass'));
 app.use(require('./routes/admin'));
 app.use(require('./routes/post'));
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.WEB_CLIENT_ID,
-  process.env.WEB_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT // server redirect url handler
-);
-
-// app.post("/createAuthLink", cors(), (req, res) => {
-//   const url = oauth2Client.generateAuthUrl({
-//     access_type: "offline",
-//     scope: [
-//       "https://www.googleapis.com/auth/userinfo.email",
-//       "https://www.googleapis.com/auth/userinfo.profile",
-//       //calendar api scopes]
-//       // "https://www.googleapis.com/auth/calendar",
-//     ],
-//     prompt: "consent",
-//   });
-//   res.send({ url });
-// });
-
-app.post("/handleGoogleRedirect", (req, res) => {
+app.post("/handleGoogleRedirect", async (req, res) => {
   // get code from url
   // console.log(req.body.code)
-  console.log(req.body)
+  console.log("HGR ------- ", req.body)
   // const code = req.query.code;
   console.log("server 48 | code", req.body.code);
   // get access token
-  oauth2Client.getToken(req.body.code, (err, tokens) => {
-    console.log("server 53 | token", tokens);
-    if (err) {
-      console.log("server 52 | error", err);
-      throw new Error("Issue with login try again ");
-      // throw new Error("Issue with Login", err.message);
-    }
-    setTimeout(() => {
-      const accessToken = tokens.access_token;
-      const refreshToken = tokens.refresh_token;
-      // const iDToken = tokens.id_token;
-      res.json({ accessToken: accessToken, refreshToken: refreshToken });
-    }, 1500);
-  });
+
+  await axios.post('https://oauth2.googleapis.com/token', {
+    client_id: process.env.WEB_CLIENT_ID,
+    client_secret: process.env.WEB_CLIENT_SECRET,
+    code: req.body.code,
+    grant_type: 'authorization_code',
+    redirect_uri: "http://localhost:5000/handleGoogleRedirect"
+  })
+    .then((resp) => {
+      const response = JSON.stringify(resp.data)
+      console.log("HGR response: " + response)
+      res.json({ accessToken: resp.data.access_token, refreshToken: resp.data.refresh_token })
+    })
 });
 
 app.post("/getValidToken", async (req, res) => {
   try {
-    const request = await fetch("https://www.googleapis.com/oauth2/v4/token", {
+    const request = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -100,7 +79,6 @@ app.post("/getValidToken", async (req, res) => {
     res.json({ error: error.message });
   }
 });
-
 
 app.use(notFound);
 app.use(errorHandler);

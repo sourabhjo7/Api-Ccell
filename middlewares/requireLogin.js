@@ -1,8 +1,7 @@
-const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.ANDROID_CLIENT_ID);
+const client = new OAuth2Client([process.env.ANDROID_CLIENT_ID, process.env.IOS_CLIENT_ID]);
 
 module.exports = (req, res, next) => {
     const { authorization } = req.headers;
@@ -15,7 +14,7 @@ module.exports = (req, res, next) => {
     async function verify() {
         const ticket = await client.verifyIdToken({
             idToken: token,
-            requiredAudience: process.env.ANDROID_CLIENT_ID,  // Specify the CLIENT_ID of the app that accesses the backend
+            requiredAudience: [process.env.ANDROID_CLIENT_ID, process.env.IOS_CLIENT_ID],  // Specify the CLIENT_ID of the app that accesses the backend
             // Or, if multiple clients access the backend:
             //[CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3]
         });
